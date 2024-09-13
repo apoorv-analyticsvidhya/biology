@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Protein Builder Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #builderContainer {
+            width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        #aminoAcidSelect {
+            width: 200px;
+            padding: 5px;
+            font-size: 16px;
+        }
+        #addButton, #removeButton {
+            padding: 5px 10px;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        #chainDisplay {
+            margin: 20px 0;
+            font-size: 18px;
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .aminoAcid {
+            position: relative;
+            width: 100px;
+            height: 150px;
+            margin: 5px;
+            text-align: center;
+        }
+        .aminoAcid svg {
+            width: 100%;
+            height: 100%;
+        }
+        .aaLabel {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        #proteinInfo {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        #proteinName {
+            font-weight: bold;
+            font-size: 20px;
+        }
+        #proteinUses {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        #resetButton {
+            margin-top: 20px;
+            padding: 5px 15px;
+            font-size: 16px;
+        }
+        /* Styles for peptide bonds */
+        .peptideBond {
+            width: 20px;
+            height: 2px;
+            background-color: #000;
+            align-self: center;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center;">Protein Builder Simulation</h2>
+
+    <div id="builderContainer">
+        <label for="aminoAcidSelect">Select Amino Acid:</label>
+        <select id="aminoAcidSelect">
+            <!-- Amino Acids List -->
+        </select>
+        <button id="addButton">Add Amino Acid</button>
+        <button id="removeButton">Remove Last Amino Acid</button>
+        <div id="chainDisplay">
+            <!-- Amino Acid Chain Display -->
+        </div>
+        <div id="proteinInfo">
+            <!-- Protein Information -->
+        </div>
+        <button id="resetButton">Reset Chain</button>
+    </div>
+
+    <script>
+        // JavaScript code to handle the simulation
+
+        const aminoAcidSelect = document.getElementById('aminoAcidSelect');
+        const addButton = document.getElementById('addButton');
+        const removeButton = document.getElementById('removeButton');
+        const chainDisplay = document.getElementById('chainDisplay');
+        const proteinInfo = document.getElementById('proteinInfo');
+        const resetButton = document.getElementById('resetButton');
+
+        const aminoAcids = [
+            { name: 'Glycine', code: 'Gly', symbol: 'G', color: '#FF5733', description: 'Simplest amino acid with a single hydrogen as its side chain.', uses: 'Used in the synthesis of proteins and as a neurotransmitter.' },
+            { name: 'Alanine', code: 'Ala', symbol: 'A', color: '#33FF57', description: 'Non-polar amino acid with a methyl side chain.', uses: 'Involved in glucose metabolism and muscle tissue repair.' },
+            { name: 'Serine', code: 'Ser', symbol: 'S', color: '#3357FF', description: 'Polar amino acid with a hydroxymethyl side chain.', uses: 'Plays a role in metabolism and enzyme function.' },
+            { name: 'Valine', code: 'Val', symbol: 'V', color: '#FF33A1', description: 'Essential branched-chain amino acid.', uses: 'Important for muscle growth and tissue repair.' },
+            { name: 'Phenylalanine', code: 'Phe', symbol: 'F', color: '#FF8C33', description: 'Aromatic amino acid.', uses: 'Precursor for neurotransmitters like dopamine and norepinephrine.' },
+            // Add more amino acids with unique colors and descriptions
+        ];
+
+        const knownProteins = [
+            {
+                name: 'Oxytocin',
+                sequence: ['C', 'Y', 'I', 'Q', 'N', 'C', 'P', 'L', 'G'],
+                description: 'Oxytocin is a hormone that acts on organs in the body and as a chemical messenger in the brain.',
+                uses: 'Induces labor, controls bleeding after childbirth, and promotes bonding.'
+            },
+            {
+                name: 'Dipeptide GA',
+                sequence: ['G', 'A'],
+                description: 'A simple dipeptide formed from Glycine and Alanine.',
+                uses: 'Used in biochemical studies and as a model for peptide bonds.'
+            },
+            // Add more known proteins or peptides here
+        ];
+
+        let aminoAcidChain = [];
+
+        // Populate the amino acid dropdown
+        aminoAcids.forEach(aa => {
+            const option = document.createElement('option');
+            option.value = aa.symbol;
+            option.textContent = `${aa.name} (${aa.code})`;
+            aminoAcidSelect.appendChild(option);
+        });
+
+        // Function to create a helix SVG
+        function createHelixSVG(color) {
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(svgNS, 'svg');
+            svg.setAttribute('viewBox', '0 0 100 150');
+
+            const path = document.createElementNS(svgNS, 'path');
+            path.setAttribute('d', 'M10,75 C30,0 70,150 90,75');
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '8');
+            path.setAttribute('fill', 'none');
+
+            svg.appendChild(path);
+            return svg;
+        }
+
+        // Function to update the chain display
+        function updateChainDisplay() {
+            chainDisplay.innerHTML = '';
+            aminoAcidChain.forEach((symbol, index) => {
+                const aaInfo = aminoAcids.find(aa => aa.symbol === symbol);
+                const aaDiv = document.createElement('div');
+                aaDiv.className = 'aminoAcid';
+
+                // Create helix SVG with unique color
+                const helixSVG = createHelixSVG(aaInfo.color);
+                aaDiv.appendChild(helixSVG);
+
+                // Add label
+                const aaLabel = document.createElement('div');
+                aaLabel.className = 'aaLabel';
+                aaLabel.textContent = aaInfo.symbol;
+                aaDiv.appendChild(aaLabel);
+
+                chainDisplay.appendChild(aaDiv);
+
+                // Draw peptide bond if not the first amino acid
+                if (index > 0) {
+                    const bondDiv = document.createElement('div');
+                    bondDiv.className = 'peptideBond';
+                    chainDisplay.insertBefore(bondDiv, aaDiv);
+                }
+            });
+
+            displayProteinInfo();
+        }
+
+        // Function to add an amino acid to the chain
+        addButton.addEventListener('click', () => {
+            const selectedAA = aminoAcidSelect.value;
+            aminoAcidChain.push(selectedAA);
+            updateChainDisplay();
+        });
+
+        // Function to remove the last amino acid from the chain
+        removeButton.addEventListener('click', () => {
+            aminoAcidChain.pop();
+            updateChainDisplay();
+        });
+
+        // Function to reset the chain
+        resetButton.addEventListener('click', () => {
+            aminoAcidChain = [];
+            // Start with the most basic amino acid: Glycine
+            aminoAcidChain.push('G');
+            updateChainDisplay();
+            proteinInfo.innerHTML = '';
+        });
+
+        // Function to display protein or peptide information
+        function displayProteinInfo() {
+            let foundProtein = null;
+
+            knownProteins.forEach(protein => {
+                if (arraysEqual(protein.sequence, aminoAcidChain)) {
+                    foundProtein = protein;
+                }
+            });
+
+            if (foundProtein) {
+                proteinInfo.innerHTML = `
+                    <div id="proteinName">${foundProtein.name}</div>
+                    <div id="proteinDescription">${foundProtein.description}</div>
+                    <div id="proteinUses"><strong>Popular Uses:</strong> ${foundProtein.uses}</div>
+                `;
+            } else {
+                // Display general information about the peptide chain
+                const sequenceNames = aminoAcidChain.map(symbol => {
+                    const aa = aminoAcids.find(aa => aa.symbol === symbol);
+                    return aa ? aa.name : symbol;
+                });
+
+                const sequenceDescriptions = aminoAcidChain.map(symbol => {
+                    const aa = aminoAcids.find(aa => aa.symbol === symbol);
+                    return aa ? `<strong>${aa.name} (${aa.symbol}):</strong> ${aa.description}` : '';
+                }).join('<br>');
+
+                proteinInfo.innerHTML = `
+                    <div id="proteinName">Peptide Sequence: ${aminoAcidChain.join('-')}</div>
+                    <div id="proteinDescription">${sequenceDescriptions}</div>
+                    <div id="proteinUses">This peptide sequence is not associated with a known protein. It may represent a novel or synthetic peptide.</div>
+                `;
+            }
+        }
+
+        // Utility function to compare two arrays
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) return false;
+            }
+            return true;
+        }
+
+        // Initial setup: Start with Glycine
+        aminoAcidChain.push('G');
+        updateChainDisplay();
+
+    </script>
+
+</body>
+</html>
